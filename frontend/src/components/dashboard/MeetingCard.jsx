@@ -27,28 +27,26 @@ function MeetingCard({ title, date, time, status }) {
         },
       }}
     >
-      <Box sx={{ flexGrow: 1 }}>
-        <Typography
-          variant="body1"
-          sx={{
-            fontWeight: 600,
-            mb: 0.5,
-          }}
+      <Box 
+        sx={{ 
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            flexShrink: 0,
+            }}
         >
-          {title}
-        </Typography>
-
-        <Typography variant="body2" color="text.secondary">
-          {date} · {time}
-        </Typography>
-      </Box>
-
-      <Chip
-        label={status}
-        color={statusColor}
-        size="small"
-        sx={{ mr: 1 }}
+         <Chip
+            label={status}
+            color={statusColor}
+            size="small"
+            sx={{ 
+                display: {
+                 xs: 'none',
+                 sm: 'inline-flex',
+              },
+            }}
       />
+      </Box>
 
       <ChevronRightIcon color="action" />
     </ListItemButton>

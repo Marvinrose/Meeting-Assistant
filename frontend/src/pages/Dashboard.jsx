@@ -18,13 +18,21 @@ function Dashboard() {
     <Box>
       {/* Page heading */}
       <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          mb: 4,
-        }}
-      >
+  sx={{
+    display: 'flex',
+    flexDirection: {
+      xs: 'column',
+      sm: 'row',
+    },
+    alignItems: {
+      xs: 'stretch',
+      sm: 'center',
+    },
+    justifyContent: 'space-between',
+    gap: 2,
+    mb: 4,
+  }}
+>
         <Box>
           <Typography
             variant="h4"
@@ -48,11 +56,9 @@ function Dashboard() {
             px: 2.5,
             py: 1.25,
             borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 600,
-            boxShadow: 'none',
-            '&:hover': {
-              boxShadow: 'none',
+            alignSelf: {
+                xs: 'stretch',
+                sm: 'auto',
             },
           }}
         >
@@ -63,10 +69,15 @@ function Dashboard() {
       {/* Statistics */}
       <Box
         sx={{
-          display: 'flex',
-          gap: 2,
-          mb: 4,
-        }}
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, 1fr)',
+            lg: 'repeat(3, 1fr)',
+         },
+         gap: 2,
+         mb: 4,
+      }}
       >
         <StatCard
           label="Total Meetings"

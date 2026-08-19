@@ -12,93 +12,108 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
-const drawerWidth = 240;
+export const drawerWidth = 240;
 
-function Sidebar() {
-  return (
-    <Drawer
-      variant="permanent"
+function Sidebar({ mobileOpen, onClose }) {
+  const drawerContent = (
+    <Box
       sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          boxSizing: 'border-box',
-          borderRight: '1px solid',
-          borderColor: 'divider',
-          backgroundColor: 'background.paper',
-        },
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <Box
-        sx={{
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {/* Logo / Brand */}
-        <Box
+      <Box sx={{ px: 3, py: 3 }}>
+        <Typography
+          variant="h6"
           sx={{
-            px: 3,
-            py: 3,
+            fontWeight: 700,
+            color: 'primary.main',
           }}
         >
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 700,
-              color: 'primary.main',
-            }}
-          >
-            Meeting Assistant
-          </Typography>
-        </Box>
-
-        {/* Navigation */}
-        <List sx={{ px: 2 }}>
-          <ListItemButton
-            selected
-            sx={{
-              borderRadius: 2,
-              mb: 1,
-            }}
-          >
-            <ListItemIcon>
-              <DashboardOutlinedIcon color="primary" />
-            </ListItemIcon>
-
-            <ListItemText primary="Dashboard" />
-          </ListItemButton>
-
-          <ListItemButton
-            sx={{
-              borderRadius: 2,
-              mb: 1,
-            }}
-          >
-            <ListItemIcon>
-              <EventNoteOutlinedIcon />
-            </ListItemIcon>
-
-            <ListItemText primary="Meetings" />
-          </ListItemButton>
-
-          <ListItemButton
-            sx={{
-              borderRadius: 2,
-            }}
-          >
-            <ListItemIcon>
-              <SettingsOutlinedIcon />
-            </ListItemIcon>
-
-            <ListItemText primary="Settings" />
-          </ListItemButton>
-        </List>
+          Meeting Assistant
+        </Typography>
       </Box>
-    </Drawer>
+
+      <List sx={{ px: 2 }}>
+        <ListItemButton
+          selected
+          sx={{
+            borderRadius: 2,
+            mb: 1,
+          }}
+        >
+          <ListItemIcon>
+            <DashboardOutlinedIcon color="primary" />
+          </ListItemIcon>
+
+          <ListItemText primary="Dashboard" />
+        </ListItemButton>
+
+        <ListItemButton
+          sx={{
+            borderRadius: 2,
+            mb: 1,
+          }}
+        >
+          <ListItemIcon>
+            <EventNoteOutlinedIcon />
+          </ListItemIcon>
+
+          <ListItemText primary="Meetings" />
+        </ListItemButton>
+
+        <ListItemButton sx={{ borderRadius: 2 }}>
+          <ListItemIcon>
+            <SettingsOutlinedIcon />
+          </ListItemIcon>
+
+          <ListItemText primary="Settings" />
+        </ListItemButton>
+      </List>
+    </Box>
+  );
+
+  return (
+    <>
+      {/* Desktop */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            backgroundColor: 'background.paper',
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+
+      {/* Mobile */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onClose}
+        ModalProps={{
+          keepMounted: true,
+        }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+    </>
   );
 }
 

@@ -2,7 +2,7 @@ import {
   Box,
   Chip,
   ListItemButton,
-  Typography,
+  ListItemText,
 } from '@mui/material';
 
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -18,37 +18,60 @@ function MeetingCard({ title, date, time, status }) {
   return (
     <ListItemButton
       sx={{
-        px: 2,
+        px: { xs: 1.5, sm: 2 },
         py: 2,
         borderRadius: 2,
-        alignItems: 'center',
+        alignItems: {
+          xs: 'flex-start',
+          sm: 'center',
+        },
+
         '&:hover': {
           backgroundColor: 'action.hover',
         },
       }}
     >
-      <Box 
-        sx={{ 
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            flexShrink: 0,
-            }}
-        >
-         <Chip
-            label={status}
-            color={statusColor}
-            size="small"
-            sx={{ 
-                display: {
-                 xs: 'none',
-                 sm: 'inline-flex',
-              },
-            }}
+      {/* Meeting information */}
+      <ListItemText
+        primary={title}
+        secondary={`${date} • ${time}`}
+        primaryTypographyProps={{
+          fontWeight: 600,
+          noWrap: true,
+        }}
+        secondaryTypographyProps={{
+          color: 'text.secondary',
+          noWrap: true,
+        }}
+        sx={{
+          minWidth: 0,
+          mr: 2,
+        }}
       />
-      </Box>
 
-      <ChevronRightIcon color="action" />
+      {/* Status + arrow */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          flexShrink: 0,
+        }}
+      >
+        <Chip
+          label={status}
+          color={statusColor}
+          size="small"
+          sx={{
+            display: {
+              xs: 'none',
+              sm: 'inline-flex',
+            },
+          }}
+        />
+
+        <ChevronRightIcon color="action" />
+      </Box>
     </ListItemButton>
   );
 }

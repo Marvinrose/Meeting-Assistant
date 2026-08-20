@@ -1,16 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class MeetingResponse(BaseModel):
     id: int
     title: str
+    audio_filename: str | None
+    transcript: str | None
+    minutes: str | None
     status: str
-    transcript: str | None = None
-    minutes: str | None = None
     created_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = ConfigDict(from_attributes=True)

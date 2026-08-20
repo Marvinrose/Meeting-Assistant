@@ -1,14 +1,17 @@
 services:
-  postgres:
-    image: postgres:17
-    container_name: meeting-assistant-postgres
+  db:
+    image: postgres:16
+    container_name: meeting_assistant_db
     restart: unless-stopped
+
     environment:
       POSTGRES_DB: meeting_assistant
       POSTGRES_USER: meeting_user
       POSTGRES_PASSWORD: meeting_password
+
     ports:
       - "5432:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

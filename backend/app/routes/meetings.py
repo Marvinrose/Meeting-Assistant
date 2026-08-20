@@ -19,10 +19,17 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
-@router.post(
-    "/",
-    response_model=MeetingResponse,
-)
+ALLOWED_EXTENSIONS = {
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".mp4",
+    ".webm",
+    ".ogg",
+}
+
+
+@router.post("/", response_model=MeetingResponse)
 async def create_meeting(
     title: str = Form(...),
     audio: UploadFile = File(...),
@@ -36,23 +43,13 @@ async def create_meeting(
 
     extension = Path(audio.filename).suffix.lower()
 
-    allowed_extensions = {
-        ".mp3",
-        ".wav",
-        ".m4a",
-        ".mp4",
-        ".webm",
-        ".ogg",
-    }
-
-    if extension not in allowed_extensions:
+    if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail="Unsupported audio format.",
         )
 
     filename = f"{uuid4()}{extension}"
-
     file_path = UPLOAD_DIR / filename
 
     contents = await audio.read()
@@ -73,10 +70,7 @@ async def create_meeting(
     return meeting
 
 
-@router.get(
-    "/",
-    response_model=list[MeetingResponse],
-)
+@router.get("/", response_model=list[MeetingResponse])
 def get_meetings(
     db: Session = Depends(get_db),
 ):
@@ -87,10 +81,7 @@ def get_meetings(
     )
 
 
-@router.get(
-    "/{meeting_id}",
-    response_model=MeetingResponse,
-)
+@router.get("/{meeting_id}", response_model=MeetingResponse)
 def get_meeting(
     meeting_id: int,
     db: Session = Depends(get_db),
@@ -108,3 +99,34 @@ def get_meeting(
         )
 
     return meeting
+
+
+@router.delete("/{meeting_id}")
+def delete_meeting(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+):
+    meeting = (
+        db.query(Meeting)
+        .filter(Meeting.id == meeting_id)
+        .first()
+    )
+
+    if not meeting:
+        raise HTTPException(
+            status_code=404,
+            detail="Meeting not found.",
+        )
+
+    if meeting.audio_filename:
+        file_path = UPLOAD_DIR / meeting.audio_filename
+
+        if file_path.exists():
+            file_path.unlink()
+
+    db.delete(meeting)
+    db.commit()
+
+    return {
+        "message": "Meeting deleted successfully."
+    }

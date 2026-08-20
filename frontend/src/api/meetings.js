@@ -7,6 +7,11 @@ export async function getMeetings() {
   return response.data;
 }
 
+export async function getMeeting(id) {
+  const response = await axios.get(`${API_URL}/meetings/${id}`);
+  return response.data;
+}
+
 export async function createMeeting(title, audioFile) {
   const formData = new FormData();
 
@@ -16,6 +21,14 @@ export async function createMeeting(title, audioFile) {
   const response = await axios.post(
     `${API_URL}/meetings/`,
     formData,
+  );
+
+  return response.data;
+}
+
+export async function deleteMeeting(id) {
+  const response = await axios.delete(
+    `${API_URL}/meetings/${id}`,
   );
 
   return response.data;

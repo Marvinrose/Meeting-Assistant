@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import {
   Alert,
   Box,
@@ -20,8 +22,9 @@ import StopIcon from '@mui/icons-material/Stop';
 
 import { createMeeting } from '../api/meetings';
 
+function NewMeeting() {
+  const navigate = useNavigate();
 
-function NewMeeting({ onBack, onCreated }) {
   const [title, setTitle] = useState('');
   const [audioFile, setAudioFile] = useState(null);
   const [recording, setRecording] = useState(false);
@@ -29,24 +32,37 @@ function NewMeeting({ onBack, onCreated }) {
   const [error, setError] = useState('');
 
   const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
   const chunksRef = useRef([]);
 
   function handleFileChange(event) {
     const file = event.target.files?.[0];
 
-    if (file) {
-      setAudioFile(file);
-      setError('');
+    if (!file) {
+      return;
     }
+
+    setAudioFile(file);
+    setError('');
   }
 
   async function startRecording() {
     try {
       setError('');
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError(
+          'Your browser does not support microphone recording.'
+        );
+        return;
+      }
+
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+
+      streamRef.current = stream;
 
       const recorder = new MediaRecorder(stream);
 
@@ -62,20 +78,28 @@ function NewMeeting({ onBack, onCreated }) {
       recorder.onstop = () => {
         const blob = new Blob(
           chunksRef.current,
-          { type: 'audio/webm' },
+          {
+            type: 'audio/webm',
+          }
         );
 
         const file = new File(
           [blob],
           `meeting-${Date.now()}.webm`,
-          { type: 'audio/webm' },
+          {
+            type: 'audio/webm',
+          }
         );
 
         setAudioFile(file);
 
-        stream.getTracks().forEach(
-          (track) => track.stop(),
-        );
+        if (streamRef.current) {
+          streamRef.current
+            .getTracks()
+            .forEach((track) => track.stop());
+
+          streamRef.current = null;
+        }
       };
 
       recorder.start();
@@ -85,20 +109,28 @@ function NewMeeting({ onBack, onCreated }) {
       console.error(err);
 
       setError(
-        'Microphone access was denied or is unavailable.',
+        'Unable to access your microphone. Please check your browser permissions.'
       );
     }
   }
 
   function stopRecording() {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setRecording(false);
+    const recorder = mediaRecorderRef.current;
+
+    if (
+      recorder &&
+      recorder.state !== 'inactive'
+    ) {
+      recorder.stop();
     }
+
+    setRecording(false);
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    setError('');
 
     if (!title.trim()) {
       setError('Please enter a meeting title.');
@@ -106,26 +138,44 @@ function NewMeeting({ onBack, onCreated }) {
     }
 
     if (!audioFile) {
-      setError('Please upload or record the meeting audio.');
+      setError(
+        'Please upload or record the meeting audio.'
+      );
       return;
     }
 
     try {
       setLoading(true);
-      setError('');
+
+      console.log('Creating meeting...');
+      console.log('Title:', title);
+      console.log('Audio:', audioFile);
 
       const meeting = await createMeeting(
         title.trim(),
-        audioFile,
+        audioFile
       );
 
-      onCreated(meeting);
+      console.log(
+        'Meeting created successfully:',
+        meeting
+      );
+
+      // Open the actual meeting that was just created.
+      navigate(`/meeting/${meeting.id}`);
     } catch (err) {
-      console.error(err);
+      console.error(
+        'CREATE MEETING ERROR:',
+        err
+      );
+
+      const backendMessage =
+        err.response?.data?.detail;
 
       setError(
-        err.response?.data?.detail ||
-        'Unable to create the meeting.',
+        backendMessage ||
+          err.message ||
+          'Unable to create the meeting. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -140,22 +190,31 @@ function NewMeeting({ onBack, onCreated }) {
         mx: 'auto',
       }}
     >
+      {/* Header */}
       <Stack
         direction="row"
         alignItems="center"
         spacing={1}
         mb={3}
       >
-        <IconButton onClick={onBack}>
+        <IconButton
+          onClick={() => navigate('/')}
+          aria-label="Back to dashboard"
+        >
           <ArrowBackIcon />
         </IconButton>
 
         <Box>
-          <Typography variant="h5" fontWeight={700}>
+          <Typography
+            variant="h5"
+            fontWeight={700}
+          >
             New Meeting
           </Typography>
 
-          <Typography color="text.secondary">
+          <Typography
+            color="text.secondary"
+          >
             Upload or record a meeting to get started.
           </Typography>
         </Box>
@@ -169,13 +228,21 @@ function NewMeeting({ onBack, onCreated }) {
           borderRadius: 3,
         }}
       >
-        <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+        <CardContent
+          sx={{
+            p: {
+              xs: 2,
+              sm: 4,
+            },
+          }}
+        >
           <Box
             component="form"
             onSubmit={handleSubmit}
           >
             <TextField
               fullWidth
+              required
               label="Meeting title"
               placeholder="e.g. Weekly Operations Meeting"
               value={title}
@@ -207,7 +274,10 @@ function NewMeeting({ onBack, onCreated }) {
               alignItems="center"
               justifyContent="center"
               sx={{
-                p: { xs: 3, sm: 6 },
+                p: {
+                  xs: 3,
+                  sm: 6,
+                },
                 border: '2px dashed',
                 borderColor: 'divider',
                 borderRadius: 3,
@@ -245,6 +315,7 @@ function NewMeeting({ onBack, onCreated }) {
                   </Typography>
 
                   <Button
+                    type="button"
                     variant="contained"
                     startIcon={<MicIcon />}
                     onClick={startRecording}
@@ -260,7 +331,9 @@ function NewMeeting({ onBack, onCreated }) {
                   <Button
                     component="label"
                     variant="outlined"
-                    startIcon={<CloudUploadIcon />}
+                    startIcon={
+                      <CloudUploadIcon />
+                    }
                   >
                     Upload Recording
 
@@ -277,7 +350,10 @@ function NewMeeting({ onBack, onCreated }) {
               {audioFile && !recording && (
                 <Alert
                   severity="success"
-                  sx={{ width: '100%' }}
+                  sx={{
+                    width: '100%',
+                    wordBreak: 'break-word',
+                  }}
                 >
                   Selected: {audioFile.name}
                 </Alert>
@@ -293,25 +369,45 @@ function NewMeeting({ onBack, onCreated }) {
               </Alert>
             )}
 
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={loading || recording}
-              sx={{
-                mt: 4,
-                py: 1.5,
-                backgroundColor: '#AA3BFF',
-                '&:hover': {
-                  backgroundColor: '#9225E6',
-                },
+            <Stack
+              direction={{
+                xs: 'column-reverse',
+                sm: 'row',
               }}
+              spacing={2}
+              sx={{ mt: 4 }}
             >
-              {loading
-                ? 'Creating Meeting...'
-                : 'Create Meeting'}
-            </Button>
+              <Button
+                type="button"
+                fullWidth
+                variant="outlined"
+                onClick={() => navigate('/')}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                disabled={
+                  loading || recording
+                }
+                sx={{
+                  py: 1.5,
+                  backgroundColor: '#AA3BFF',
+                  '&:hover': {
+                    backgroundColor: '#9225E6',
+                  },
+                }}
+              >
+                {loading
+                  ? 'Creating Meeting...'
+                  : 'Create Meeting'}
+              </Button>
+            </Stack>
           </Box>
         </CardContent>
       </Card>

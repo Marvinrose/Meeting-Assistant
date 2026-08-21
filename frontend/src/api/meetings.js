@@ -3,12 +3,18 @@ import axios from 'axios';
 const API_URL = 'http://127.0.0.1:8000/api';
 
 export async function getMeetings() {
-  const response = await axios.get(`${API_URL}/meetings/`);
+  const response = await axios.get(
+    `${API_URL}/meetings/`
+  );
+
   return response.data;
 }
 
 export async function getMeeting(id) {
-  const response = await axios.get(`${API_URL}/meetings/${id}`);
+  const response = await axios.get(
+    `${API_URL}/meetings/${id}`
+  );
+
   return response.data;
 }
 
@@ -20,7 +26,7 @@ export async function createMeeting(title, audioFile) {
 
   const response = await axios.post(
     `${API_URL}/meetings/`,
-    formData,
+    formData
   );
 
   return response.data;
@@ -28,7 +34,7 @@ export async function createMeeting(title, audioFile) {
 
 export async function deleteMeeting(id) {
   const response = await axios.delete(
-    `${API_URL}/meetings/${id}`,
+    `${API_URL}/meetings/${id}`
   );
 
   return response.data;

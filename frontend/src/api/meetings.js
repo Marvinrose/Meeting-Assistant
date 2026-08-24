@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = 'http://127.0.0.1:8000/api';
+// Use the environment variable when available.
+// During local development, this falls back to FastAPI.
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  'http://127.0.0.1:8000/api';
 
 export async function getMeetings() {
   const response = await axios.get(
@@ -38,4 +42,18 @@ export async function deleteMeeting(id) {
   );
 
   return response.data;
+}
+
+// Transcribe the meeting and generate minutes.
+export async function processMeeting(id) {
+  const response = await axios.post(
+    `${API_URL}/meetings/${id}/process`
+  );
+
+  return response.data;
+}
+
+// Return the PDF URL for a meeting.
+export function getMeetingPdfUrl(id) {
+  return `${API_URL}/meetings/${id}/document/pdf`;
 }

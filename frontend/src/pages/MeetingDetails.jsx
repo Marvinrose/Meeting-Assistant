@@ -11,48 +11,44 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  LinearProgress,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
-import MicIcon from '@mui/icons-material/Mic';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import MicIcon from '@mui/icons-material/Mic';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 import {
   getMeeting,
   deleteMeeting,
   processMeeting,
-  getMeetingPdfUrl,
 } from '../api/meetings';
+
 
 function MeetingDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [meeting, setMeeting] =
-    useState(null);
+  const [meeting, setMeeting] = useState(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const [processing, setProcessing] =
-    useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  const [deleting, setDeleting] =
-    useState(false);
 
-  const [error, setError] =
-    useState('');
-
-  /*
-   * Load the meeting.
-   */
   async function loadMeeting() {
     try {
       setLoading(true);
@@ -62,97 +58,53 @@ function MeetingDetails() {
 
       setMeeting(data);
     } catch (err) {
-      console.error(
-        'LOAD MEETING ERROR:',
-        err
-      );
+      console.error('LOAD MEETING ERROR:', err);
 
       setError(
         err.response?.data?.detail ||
-          'Unable to load this meeting.'
+        'Unable to load this meeting.'
       );
     } finally {
       setLoading(false);
     }
   }
 
-  /*
-   * Load meeting when the page opens.
-   */
+
   useEffect(() => {
     loadMeeting();
   }, [id]);
 
-  /*
-   * Process meeting.
-   *
-   * Backend endpoint:
-   * POST /api/meetings/{id}/process
-   */
+
   async function handleProcess() {
     try {
       setProcessing(true);
       setError('');
+      setSuccess('');
 
-      /*
-       * Immediately show processing status
-       * in the UI.
-       */
-      setMeeting((previous) => {
-        if (!previous) {
-          return previous;
-        }
+      const updatedMeeting = await processMeeting(id);
 
-        return {
-          ...previous,
-          status: 'processing',
-        };
-      });
-
-      const updatedMeeting =
-        await processMeeting(id);
-
-      /*
-       * Replace the old meeting with the
-       * processed meeting returned by FastAPI.
-       */
       setMeeting(updatedMeeting);
-    } catch (err) {
-      console.error(
-        'PROCESS MEETING ERROR:',
-        err
+
+      setSuccess(
+        'Meeting successfully transcribed and minutes generated.'
       );
-
-      /*
-       * Reload the original meeting in case
-       * the backend changed its status.
-       */
-      try {
-        const currentMeeting =
-          await getMeeting(id);
-
-        setMeeting(currentMeeting);
-      } catch {
-        // Keep the existing meeting state.
-      }
+    } catch (err) {
+      console.error('PROCESS MEETING ERROR:', err);
 
       setError(
         err.response?.data?.detail ||
-          'Unable to process this meeting. Please try again.'
+        'Unable to process this meeting.'
       );
     } finally {
       setProcessing(false);
     }
   }
 
-  /*
-   * Delete meeting.
-   */
+
   async function handleDelete() {
-    const confirmed =
-      window.confirm(
-        'Are you sure you want to delete this meeting? This action cannot be undone.'
-      );
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this meeting?'
+    );
 
     if (!confirmed) {
       return;
@@ -166,89 +118,131 @@ function MeetingDetails() {
 
       navigate('/');
     } catch (err) {
-      console.error(
-        'DELETE MEETING ERROR:',
-        err
-      );
+      console.error('DELETE MEETING ERROR:', err);
 
       setError(
         err.response?.data?.detail ||
-          'Unable to delete this meeting.'
+        'Unable to delete this meeting.'
       );
 
       setDeleting(false);
     }
   }
 
-  /*
-   * Download PDF.
-   */
+
   function handleDownloadPdf() {
-    const pdfUrl =
-      getMeetingPdfUrl(id);
+    const apiUrl =
+      import.meta.env.VITE_API_URL ||
+      'http://127.0.0.1:8000/api';
 
     window.open(
-      pdfUrl,
-      '_blank',
-      'noopener,noreferrer'
+      `${apiUrl}/meetings/${id}/document/pdf`,
+      '_blank'
     );
   }
 
-  /*
-   * Loading state.
-   */
+
+  async function handleCopyTranscript() {
+    if (!meeting?.transcript) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        meeting.transcript
+      );
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (err) {
+      console.error(
+        'COPY TRANSCRIPT ERROR:',
+        err
+      );
+    }
+  }
+
+
   if (loading) {
     return (
       <Box
         sx={{
-          minHeight: 400,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          maxWidth: 1000,
+          mx: 'auto',
+          width: '100%',
         }}
       >
-        <Stack
-          spacing={2}
-          alignItems="center"
-        >
-          <CircularProgress />
+        <Stack spacing={2}>
+          <Box
+            sx={{
+              width: 120,
+              height: 16,
+              bgcolor: 'action.hover',
+              borderRadius: 1,
+            }}
+          />
 
-          <Typography
-            color="text.secondary"
+          <Box
+            sx={{
+              width: '60%',
+              height: 36,
+              bgcolor: 'action.hover',
+              borderRadius: 1,
+            }}
+          />
+
+          <Card
+            elevation={0}
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 3,
+            }}
           >
-            Loading meeting...
-          </Typography>
+            <CardContent sx={{ p: 4 }}>
+              <CircularProgress />
+            </CardContent>
+          </Card>
         </Stack>
       </Box>
     );
   }
 
-  /*
-   * Error state when meeting could not load.
-   */
+
   if (error && !meeting) {
     return (
-      <Stack spacing={2}>
+      <Box
+        sx={{
+          maxWidth: 1000,
+          mx: 'auto',
+        }}
+      >
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/')}
           sx={{
-            alignSelf: 'flex-start',
+            mb: 3,
+            textTransform: 'none',
           }}
         >
-          Back to Meetings
+          Back to meetings
         </Button>
 
         <Alert severity="error">
           {error}
         </Alert>
-      </Stack>
+      </Box>
     );
   }
+
 
   if (!meeting) {
     return null;
   }
+
 
   const status =
     meeting.status || 'uploaded';
@@ -256,60 +250,67 @@ function MeetingDetails() {
   const isCompleted =
     status === 'completed';
 
-  const isProcessing =
-    status === 'processing' ||
-    processing;
-
   const hasTranscript =
     Boolean(meeting.transcript);
 
   const hasMinutes =
     Boolean(meeting.minutes);
 
+
   return (
     <Box
       sx={{
-        width: '100%',
         maxWidth: 1000,
         mx: 'auto',
-        pb: 5,
+        width: '100%',
+        pb: 6,
       }}
     >
-      {/* =====================================================
-          HEADER
-      ====================================================== */}
 
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="flex-start"
-        mb={4}
+      {/* Back */}
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={() => navigate('/')}
+        sx={{
+          mb: 3,
+          textTransform: 'none',
+          color: 'text.secondary',
+          '&:hover': {
+            color: 'text.primary',
+            backgroundColor: 'transparent',
+          },
+        }}
       >
-        <IconButton
-          onClick={() => navigate('/')}
-          aria-label="Back to meetings"
-          sx={{
-            mt: 0.5,
-          }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
+        Back to meetings
+      </Button>
 
-        <Box
-          sx={{
-            flexGrow: 1,
-            minWidth: 0,
-          }}
-        >
+
+      {/* Header */}
+      <Stack
+        direction={{
+          xs: 'column',
+          sm: 'row',
+        }}
+        spacing={2}
+        justifyContent="space-between"
+        alignItems={{
+          xs: 'flex-start',
+          sm: 'center',
+        }}
+        mb={3}
+      >
+
+        <Box sx={{ minWidth: 0 }}>
           <Typography
             variant="h4"
-            fontWeight={700}
+            fontWeight={800}
             sx={{
               fontSize: {
-                xs: '1.6rem',
-                sm: '2rem',
+                xs: '1.75rem',
+                sm: '2.25rem',
               },
               wordBreak: 'break-word',
+              letterSpacing: '-0.02em',
             }}
           >
             {meeting.title}
@@ -317,7 +318,7 @@ function MeetingDetails() {
 
           <Typography
             color="text.secondary"
-            mt={0.5}
+            sx={{ mt: 0.75 }}
           >
             {meeting.created_at
               ? new Date(
@@ -327,74 +328,54 @@ function MeetingDetails() {
           </Typography>
         </Box>
 
+
         <Chip
+          icon={
+            isCompleted
+              ? <CheckCircleIcon />
+              : undefined
+          }
           label={status}
           color={
             isCompleted
               ? 'success'
               : status === 'processing'
               ? 'warning'
-              : 'info'
-          }
-          icon={
-            isCompleted ? (
-              <CheckCircleIcon />
-            ) : undefined
+              : 'default'
           }
           sx={{
             textTransform: 'capitalize',
             fontWeight: 600,
+            px: 0.5,
           }}
         />
+
       </Stack>
 
-      {/* =====================================================
-          PROCESSING MESSAGE
-      ====================================================== */}
 
-      {isProcessing && (
-        <Alert
-          severity="info"
-          sx={{
-            mb: 3,
-            borderRadius: 3,
-          }}
-        >
-          <Typography
-            fontWeight={700}
-            mb={0.5}
-          >
-            Processing your meeting
-          </Typography>
-
-          <Typography variant="body2">
-            Your recording is being transcribed
-            and the meeting minutes are being
-            generated. Please wait...
-          </Typography>
-        </Alert>
-      )}
-
-      {/* =====================================================
-          ERROR MESSAGE
-      ====================================================== */}
-
+      {/* Alerts */}
       {error && (
         <Alert
           severity="error"
-          sx={{
-            mb: 3,
-            borderRadius: 3,
-          }}
+          sx={{ mb: 2 }}
+          onClose={() => setError('')}
         >
           {error}
         </Alert>
       )}
 
-      {/* =====================================================
-          RECORDING / PROCESSING CARD
-      ====================================================== */}
+      {success && (
+        <Alert
+          severity="success"
+          sx={{ mb: 2 }}
+          onClose={() => setSuccess('')}
+        >
+          {success}
+        </Alert>
+      )}
 
+
+      {/* Main action card */}
       <Card
         elevation={0}
         sx={{
@@ -402,33 +383,42 @@ function MeetingDetails() {
           borderColor: 'divider',
           borderRadius: 3,
           mb: 3,
+          overflow: 'hidden',
         }}
       >
+
+        {processing && (
+          <LinearProgress />
+        )}
+
         <CardContent
           sx={{
             p: {
-              xs: 2,
+              xs: 2.5,
               sm: 3,
             },
           }}
         >
+
           <Stack
             direction={{
               xs: 'column',
               sm: 'row',
             }}
-            justifyContent="space-between"
+            spacing={2}
             alignItems={{
               xs: 'stretch',
               sm: 'center',
             }}
-            spacing={3}
+            justifyContent="space-between"
           >
+
             <Stack
               direction="row"
               spacing={2}
               alignItems="center"
             >
+
               <Box
                 sx={{
                   width: 48,
@@ -437,241 +427,106 @@ function MeetingDetails() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor:
-                    'primary.lighter',
-                  background:
-                    'rgba(170, 59, 255, 0.10)',
+                  backgroundColor: 'rgba(170, 59, 255, 0.10)',
+                  color: '#AA3BFF',
+                  flexShrink: 0,
                 }}
               >
-                <MicIcon
-                  color="primary"
-                />
+                <MicIcon />
               </Box>
 
               <Box>
                 <Typography
-                  variant="body2"
-                  color="text.secondary"
+                  fontWeight={700}
                 >
-                  Recording
+                  Meeting recording
                 </Typography>
 
                 <Typography
-                  fontWeight={600}
+                  variant="body2"
+                  color="text.secondary"
                   sx={{
-                    wordBreak:
-                      'break-word',
+                    wordBreak: 'break-word',
                   }}
                 >
                   {meeting.audio_filename ||
-                    'No recording'}
+                    'No recording attached'}
                 </Typography>
               </Box>
+
             </Stack>
 
-            {/* PROCESS BUTTON */}
 
-            {!isCompleted && (
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={
-                  isProcessing ? (
-                    <CircularProgress
-                      size={20}
-                      color="inherit"
-                    />
-                  ) : (
-                    <PlayCircleOutlineIcon />
-                  )
-                }
-                onClick={handleProcess}
-                disabled={isProcessing}
-                sx={{
-                  minWidth: {
-                    xs: '100%',
-                    sm: 280,
-                  },
-                  py: 1.4,
-                  backgroundColor:
-                    '#AA3BFF',
-                  '&:hover': {
-                    backgroundColor:
-                      '#9225E6',
-                  },
-                }}
-              >
-                {isProcessing
-                  ? 'Processing...'
-                  : 'Transcribe & Generate Minutes'}
-              </Button>
-            )}
+            <Stack
+              direction={{
+                xs: 'column',
+                sm: 'row',
+              }}
+              spacing={1}
+            >
 
-            {/* REPROCESS */}
+              {!isCompleted && (
+                <Button
+                  variant="contained"
+                  startIcon={
+                    processing
+                      ? (
+                        <CircularProgress
+                          size={18}
+                          color="inherit"
+                        />
+                      )
+                      : (
+                        <AutoAwesomeIcon />
+                      )
+                  }
+                  onClick={handleProcess}
+                  disabled={
+                    processing ||
+                    !meeting.audio_filename
+                  }
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    px: 2.5,
+                    backgroundColor: '#AA3BFF',
+                    '&:hover': {
+                      backgroundColor: '#9225E6',
+                    },
+                  }}
+                >
+                  {processing
+                    ? 'Processing...'
+                    : 'Transcribe & Generate Minutes'}
+                </Button>
+              )}
 
-            {isCompleted && (
-              <Button
-                variant="outlined"
-                size="large"
-                startIcon={
-                  isProcessing ? (
-                    <CircularProgress
-                      size={20}
-                    />
-                  ) : (
-                    <RefreshIcon />
-                  )
-                }
-                onClick={handleProcess}
-                disabled={isProcessing}
-                sx={{
-                  minWidth: {
-                    xs: '100%',
-                    sm: 180,
-                  },
-                }}
-              >
-                {isProcessing
-                  ? 'Processing...'
-                  : 'Reprocess'}
-              </Button>
-            )}
+
+              {isCompleted && (
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleProcess}
+                  disabled={processing}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Re-process
+                </Button>
+              )}
+
+            </Stack>
+
           </Stack>
+
         </CardContent>
       </Card>
 
-      {/* =====================================================
-          MEETING MINUTES
-      ====================================================== */}
 
-      <Card
-        elevation={0}
-        sx={{
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 3,
-          mb: 3,
-        }}
-      >
-        <CardContent
-          sx={{
-            p: {
-              xs: 2,
-              sm: 4,
-            },
-          }}
-        >
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={1.5}
-            mb={2}
-          >
-            <DescriptionIcon
-              color="primary"
-            />
-
-            <Typography
-              variant="h6"
-              fontWeight={700}
-            >
-              Meeting Minutes
-            </Typography>
-          </Stack>
-
-          <Divider sx={{ mb: 3 }} />
-
-          {hasMinutes ? (
-            <Box
-              sx={{
-                '& p': {
-                  lineHeight: 1.8,
-                },
-              }}
-            >
-              <Typography
-                sx={{
-                  whiteSpace: 'pre-wrap',
-                  lineHeight: 1.8,
-                  fontSize: '1rem',
-                }}
-              >
-                {meeting.minutes}
-              </Typography>
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                py: 6,
-                px: 2,
-                textAlign: 'center',
-              }}
-            >
-              <DescriptionIcon
-                sx={{
-                  fontSize: 52,
-                  color: 'text.disabled',
-                  mb: 1,
-                }}
-              />
-
-              <Typography
-                fontWeight={700}
-                mb={1}
-              >
-                No meeting minutes yet
-              </Typography>
-
-              <Typography
-                color="text.secondary"
-                mb={3}
-                sx={{
-                  maxWidth: 500,
-                  mx: 'auto',
-                }}
-              >
-                Process this recording to
-                transcribe the audio and generate
-                meeting minutes automatically.
-              </Typography>
-
-              <Button
-                variant="contained"
-                startIcon={
-                  isProcessing ? (
-                    <CircularProgress
-                      size={20}
-                      color="inherit"
-                    />
-                  ) : (
-                    <PlayCircleOutlineIcon />
-                  )
-                }
-                onClick={handleProcess}
-                disabled={isProcessing}
-                sx={{
-                  backgroundColor:
-                    '#AA3BFF',
-                  '&:hover': {
-                    backgroundColor:
-                      '#9225E6',
-                  },
-                }}
-              >
-                {isProcessing
-                  ? 'Processing...'
-                  : 'Transcribe & Generate Minutes'}
-              </Button>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* =====================================================
-          TRANSCRIPT
-      ====================================================== */}
-
-      {hasTranscript && (
+      {/* Audio player */}
+      {meeting.audio_filename && (
         <Card
           elevation={0}
           sx={{
@@ -681,107 +536,389 @@ function MeetingDetails() {
             mb: 3,
           }}
         >
+
           <CardContent
             sx={{
               p: {
-                xs: 2,
-                sm: 4,
+                xs: 2.5,
+                sm: 3,
               },
             }}
           >
+
             <Typography
               variant="h6"
               fontWeight={700}
               mb={2}
             >
-              Full Transcript
+              Recording
             </Typography>
 
-            <Divider sx={{ mb: 3 }} />
+            <audio
+              controls
+              style={{
+                width: '100%',
+                display: 'block',
+              }}
+            >
+              <source
+                src={meeting.audio_url}
+              />
+              Your browser does not support
+              audio playback.
+            </audio>
 
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                display: 'block',
+                mt: 1.5,
+              }}
+            >
+              {meeting.audio_filename}
+            </Typography>
+
+          </CardContent>
+
+        </Card>
+      )}
+
+
+      {/* Minutes */}
+      <Card
+        elevation={0}
+        sx={{
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+          mb: 3,
+        }}
+      >
+
+        <CardContent
+          sx={{
+            p: {
+              xs: 2.5,
+              sm: 3,
+            },
+          }}
+        >
+
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            mb={2}
+          >
+
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+            >
+
+              <DescriptionIcon
+                sx={{
+                  color: '#AA3BFF',
+                }}
+              />
+
+              <Typography
+                variant="h6"
+                fontWeight={700}
+              >
+                Meeting Minutes
+              </Typography>
+
+            </Stack>
+
+
+            {hasMinutes && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  <PictureAsPdfIcon />
+                }
+                onClick={handleDownloadPdf}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Download PDF
+              </Button>
+            )}
+
+          </Stack>
+
+
+          <Divider sx={{ mb: 3 }} />
+
+
+          {hasMinutes ? (
             <Box
               sx={{
-                backgroundColor:
-                  'rgba(0, 0, 0, 0.025)',
+                backgroundColor: 'background.default',
                 borderRadius: 2,
                 p: {
                   xs: 2,
                   sm: 3,
                 },
-                maxHeight: 600,
-                overflowY: 'auto',
               }}
             >
               <Typography
                 sx={{
                   whiteSpace: 'pre-wrap',
-                  lineHeight: 1.8,
+                  lineHeight: 1.85,
                   color: 'text.primary',
+                }}
+              >
+                {meeting.minutes}
+              </Typography>
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                py: 5,
+                textAlign: 'center',
+              }}
+            >
+
+              <AutoAwesomeIcon
+                sx={{
+                  fontSize: 42,
+                  color: 'text.disabled',
+                  mb: 1,
+                }}
+              />
+
+              <Typography
+                fontWeight={600}
+                mb={0.75}
+              >
+                No minutes yet
+              </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  maxWidth: 420,
+                  mx: 'auto',
+                }}
+              >
+                Process this meeting to generate
+                a transcript and professional
+                meeting minutes.
+              </Typography>
+
+            </Box>
+          )}
+
+        </CardContent>
+      </Card>
+
+
+      {/* Transcript */}
+      <Card
+        elevation={0}
+        sx={{
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 3,
+          mb: 3,
+        }}
+      >
+
+        <CardContent
+          sx={{
+            p: {
+              xs: 2.5,
+              sm: 3,
+            },
+          }}
+        >
+
+          <Stack
+            direction={{
+              xs: 'column',
+              sm: 'row',
+            }}
+            spacing={1}
+            justifyContent="space-between"
+            alignItems={{
+              xs: 'flex-start',
+              sm: 'center',
+            }}
+            mb={2}
+          >
+
+            <Typography
+              variant="h6"
+              fontWeight={700}
+            >
+              Transcript
+            </Typography>
+
+
+            {hasTranscript && (
+              <Tooltip
+                title={
+                  copied
+                    ? 'Copied'
+                    : 'Copy transcript'
+                }
+              >
+                <IconButton
+                  onClick={
+                    handleCopyTranscript
+                  }
+                  size="small"
+                >
+                  {copied ? (
+                    <CheckCircleIcon
+                      color="success"
+                    />
+                  ) : (
+                    <ContentCopyIcon />
+                  )}
+                </IconButton>
+              </Tooltip>
+            )}
+
+          </Stack>
+
+
+          <Divider sx={{ mb: 3 }} />
+
+
+          {hasTranscript ? (
+            <Box
+              sx={{
+                maxHeight: 500,
+                overflowY: 'auto',
+                backgroundColor: 'background.default',
+                borderRadius: 2,
+                p: {
+                  xs: 2,
+                  sm: 3,
+                },
+              }}
+            >
+
+              <Typography
+                sx={{
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.8,
                 }}
               >
                 {meeting.transcript}
               </Typography>
+
             </Box>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <Box
+              sx={{
+                py: 4,
+                textAlign: 'center',
+              }}
+            >
 
-      {/* =====================================================
-          ACTIONS
-      ====================================================== */}
+              <Typography
+                fontWeight={600}
+                mb={0.75}
+              >
+                No transcript available
+              </Typography>
 
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                Process the meeting recording
+                to generate the transcript.
+              </Typography>
+
+            </Box>
+          )}
+
+        </CardContent>
+      </Card>
+
+
+      {/* Bottom actions */}
       <Stack
         direction={{
           xs: 'column',
           sm: 'row',
         }}
-        spacing={2}
+        spacing={1.5}
+        justifyContent="space-between"
       >
-        {hasMinutes && (
-          <Button
-            variant="contained"
-            startIcon={
-              <PictureAsPdfIcon />
-            }
-            onClick={handleDownloadPdf}
-            sx={{
-              backgroundColor: '#AA3BFF',
-              '&:hover': {
-                backgroundColor:
-                  '#9225E6',
-              },
-            }}
-          >
-            Download PDF
-          </Button>
-        )}
 
         <Button
           variant="outlined"
-          startIcon={
-            <ArrowBackIcon />
-          }
+          startIcon={<ArrowBackIcon />}
           onClick={() => navigate('/')}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+          }}
         >
           Back to Meetings
         </Button>
 
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={
-            <DeleteIcon />
-          }
-          onClick={handleDelete}
-          disabled={deleting}
+
+        <Stack
+          direction={{
+            xs: 'column',
+            sm: 'row',
+          }}
+          spacing={1.5}
         >
-          {deleting
-            ? 'Deleting...'
-            : 'Delete Meeting'}
-        </Button>
+
+          {hasMinutes && (
+            <Button
+              variant="outlined"
+              startIcon={
+                <PictureAsPdfIcon />
+              }
+              onClick={handleDownloadPdf}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+              }}
+            >
+              Download PDF
+            </Button>
+          )}
+
+
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={handleDelete}
+            disabled={deleting}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {deleting
+              ? 'Deleting...'
+              : 'Delete Meeting'}
+          </Button>
+
+        </Stack>
+
       </Stack>
+
     </Box>
   );
 }
+
 
 export default MeetingDetails;

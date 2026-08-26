@@ -53,6 +53,11 @@ export async function processMeeting(id) {
   return response.data;
 }
 
+
+export function getAudioUrl(id) {
+  return `${API_URL}/meetings/${id}/audio`;
+}
+
 // Return the PDF URL for a meeting.
 export function getMeetingPdfUrl(id) {
   return `${API_URL}/meetings/${id}/document/pdf`;

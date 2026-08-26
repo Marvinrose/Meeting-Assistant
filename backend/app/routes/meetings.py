@@ -137,6 +137,44 @@ def delete_meeting(
     }
 
 
+@router.get("/{meeting_id}/audio")
+def play_audio(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+):
+    meeting = (
+        db.query(Meeting)
+        .filter(Meeting.id == meeting_id)
+        .first()
+    )
+
+    if not meeting:
+        raise HTTPException(
+            status_code=404,
+            detail="Meeting not found.",
+        )
+
+    if not meeting.audio_filename:
+        raise HTTPException(
+            status_code=404,
+            detail="No audio recording found for this meeting.",
+        )
+
+    audio_path = Path("uploads") / meeting.audio_filename
+
+    if not audio_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Audio file not found.",
+        )
+
+    return FileResponse(
+        path=audio_path,
+        media_type="audio/mpeg",
+        filename=meeting.audio_filename,
+    )
+
+
 @router.post("/{meeting_id}/process")
 def process_meeting(
     meeting_id: int,

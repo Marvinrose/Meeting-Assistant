@@ -355,3 +355,36 @@ def download_pdf(
         media_type="application/pdf",
         filename=f"{meeting.title}.pdf",
     )
+
+@router.get("/{meeting_id}/document/docx")
+def download_docx(meeting_id: int, db: Session = Depends(get_db)):
+    meeting = (
+        db.query(Meeting)
+        .filter(Meeting.id == meeting_id)
+        .first()
+    )
+
+    if not meeting:
+        raise HTTPException(
+            status_code=404,
+            detail="Meeting not found.",
+        )
+
+    path = Path(
+        f"generated/meeting-{meeting_id}.docx"
+    )
+
+    if not path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="DOCX has not been generated yet.",
+        )
+
+    return FileResponse(
+        path,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.document"
+        ),
+        filename=f"{meeting.title}.docx",
+    )

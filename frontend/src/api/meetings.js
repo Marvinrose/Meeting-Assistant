@@ -62,3 +62,7 @@ export function getAudioUrl(id) {
 export function getMeetingPdfUrl(id) {
   return `${API_URL}/meetings/${id}/document/pdf`;
 }
+
+export function getMeetingDocxUrl(id) {
+  return `${API_URL}/meetings/${id}/document/docx`;
+}

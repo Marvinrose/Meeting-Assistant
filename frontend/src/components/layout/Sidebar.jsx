@@ -1,20 +1,52 @@
-import {
-  Box,
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Typography,
+import { 
+  Box, 
+  Drawer, 
+  List, 
+  ListItemButton, 
+  ListItemIcon, 
+  ListItemText, 
+  Typography, 
 } from '@mui/material';
 
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
+import { useLocation, useNavigate } from 'react-router-dom';
+
 export const drawerWidth = 240;
 
 function Sidebar({ mobileOpen, onClose }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavigation = (path) => {
+    navigate(path);
+
+    // Close mobile drawer after navigation
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const menuItems = [
+    {
+      label: 'Dashboard',
+      path: '/',
+      icon: <DashboardOutlinedIcon />,
+    },
+    {
+      label: 'Meetings',
+      path: '/meetings',
+      icon: <EventNoteOutlinedIcon />,
+    },
+    {
+      label: 'Settings',
+      path: '/settings',
+      icon: <SettingsOutlinedIcon />,
+    },
+  ];
+
   const drawerContent = (
     <Box
       sx={{
@@ -29,47 +61,39 @@ function Sidebar({ mobileOpen, onClose }) {
           sx={{
             fontWeight: 700,
             color: 'primary.main',
+            cursor: 'pointer',
           }}
+          onClick={() => handleNavigation('/')}
         >
           Meeting Assistant
         </Typography>
       </Box>
 
       <List sx={{ px: 2 }}>
-        <ListItemButton
-          selected
-          sx={{
-            borderRadius: 2,
-            mb: 1,
-          }}
-        >
-          <ListItemIcon>
-            <DashboardOutlinedIcon color="primary" />
-          </ListItemIcon>
+        {menuItems.map((item) => {
+          const isActive =
+            item.path === '/'
+              ? location.pathname === '/'
+              : location.pathname.startsWith(item.path);
 
-          <ListItemText primary="Dashboard" />
-        </ListItemButton>
+          return (
+            <ListItemButton
+              key={item.path}
+              selected={isActive}
+              onClick={() => handleNavigation(item.path)}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+              }}
+            >
+              <ListItemIcon>
+                {item.icon}
+              </ListItemIcon>
 
-        <ListItemButton
-          sx={{
-            borderRadius: 2,
-            mb: 1,
-          }}
-        >
-          <ListItemIcon>
-            <EventNoteOutlinedIcon />
-          </ListItemIcon>
-
-          <ListItemText primary="Meetings" />
-        </ListItemButton>
-
-        <ListItemButton sx={{ borderRadius: 2 }}>
-          <ListItemIcon>
-            <SettingsOutlinedIcon />
-          </ListItemIcon>
-
-          <ListItemText primary="Settings" />
-        </ListItemButton>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          );
+        })}
       </List>
     </Box>
   );

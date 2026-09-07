@@ -7,8 +7,10 @@ import {
 } from 'react-router-dom';
 
 import Dashboard from './pages/Dashboard';
+import Meetings from './pages/Meetings';
 import NewMeeting from './pages/NewMeeting';
 import MeetingDetails from './pages/MeetingDetails';
+import Settings from './pages/Settings';
 
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
@@ -62,6 +64,8 @@ function AppLayout() {
             element={<Dashboard />}
           />
 
+          <Route path="/meetings" element={<Meetings />} />
+
           <Route
             path="/new-meeting"
             element={<NewMeeting />}
@@ -71,6 +75,8 @@ function AppLayout() {
             path="/meeting/:id"
             element={<MeetingDetails />}
           />
+
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </Box>
     </Box>

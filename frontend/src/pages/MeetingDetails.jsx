@@ -32,6 +32,8 @@ import {
   deleteMeeting,
   processMeeting,
   getAudioUrl,
+  getMeetingPdfUrl,
+  getMeetingDocxUrl,
 } from '../api/meetings';
 
 
@@ -132,15 +134,18 @@ function MeetingDetails() {
 
 
   function handleDownloadPdf() {
-    const apiUrl =
-      import.meta.env.VITE_API_URL ||
-      'http://127.0.0.1:8000/api';
+  window.open(
+    getMeetingPdfUrl(id),
+    '_blank'
+  );
+}
 
-    window.open(
-      `${apiUrl}/meetings/${id}/document/pdf`,
-      '_blank'
-    );
-  }
+function handleDownloadDocx() {
+  window.open(
+    getMeetingDocxUrl(id),
+    '_blank'
+  );
+}
 
 
   async function handleCopyTranscript() {
@@ -637,6 +642,14 @@ function MeetingDetails() {
 
 
             {hasMinutes && (
+              <Stack
+                direction={{
+                  xs: 'column',
+                  sm: 'row',
+                }}
+                spacing={1}
+              >
+
               <Button
                 variant="outlined"
                 size="small"
@@ -651,6 +664,21 @@ function MeetingDetails() {
               >
                 Download PDF
               </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  <DescriptionIcon />
+                }
+                onClick={handleDownloadDocx}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Download DOCX
+              </Button>
+            </Stack>
             )}
 
           </Stack>
@@ -882,6 +910,7 @@ function MeetingDetails() {
         >
 
           {hasMinutes && (
+            <>
             <Button
               variant="outlined"
               startIcon={
@@ -895,6 +924,21 @@ function MeetingDetails() {
             >
               Download PDF
             </Button>
+            <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  <DescriptionIcon />
+                }
+                onClick={handleDownloadDocx}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Download DOCX
+              </Button>
+            </>
           )}
 
 

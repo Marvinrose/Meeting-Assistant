@@ -319,7 +319,7 @@ function Dashboard() {
                 }
                 onClick={() =>
                   navigate(
-                    `/meeting/${meeting.id}`
+                    `/meetings/${meeting.id}`
                   )
                 }
               />

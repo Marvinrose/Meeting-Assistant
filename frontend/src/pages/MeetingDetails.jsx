@@ -31,6 +31,7 @@ import {
   getMeeting,
   deleteMeeting,
   processMeeting,
+  getAudioUrl,
 } from '../api/meetings';
 
 
@@ -318,7 +319,7 @@ function MeetingDetails() {
 
           <Typography
             color="text.secondary"
-            sx={{ mt: 0.75 }}
+            sx={{ mt: 0.75, mb: 0.75 }}
           >
             {meeting.created_at
               ? new Date(
@@ -562,7 +563,8 @@ function MeetingDetails() {
               }}
             >
               <source
-                src={meeting.audio_url}
+                src={getAudioUrl(meeting.id)}
+                type='audio/webm'
               />
               Your browser does not support
               audio playback.

@@ -1,13 +1,28 @@
 from pathlib import Path
-from uuid import uuid4
+from tempfile import NamedTemporaryFile
+import os
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Meeting
 from ..schemas import MeetingResponse
+
+from ..services.storage import (
+    upload_audio,
+    download_audio,
+    create_audio_signed_url,
+    delete_audio,
+)
 
 from ..services.transcription import transcribe_audio
 from ..services.minutes import generate_minutes
@@ -18,10 +33,6 @@ router = APIRouter(
     prefix="/api/meetings",
     tags=["Meetings"],
 )
-
-
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 ALLOWED_EXTENSIONS = {
@@ -54,23 +65,49 @@ async def create_meeting(
             detail="Unsupported audio format.",
         )
 
-    filename = f"{uuid4()}{extension}"
-    file_path = UPLOAD_DIR / filename
-
     contents = await audio.read()
 
-    with open(file_path, "wb") as file:
-        file.write(contents)
+    if not contents:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded audio file is empty.",
+        )
 
+    try:
+        # Upload the recording to Supabase Storage.
+        storage_path = upload_audio(
+            file_bytes=contents,
+            original_filename=audio.filename,
+            content_type=audio.content_type,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload audio: {str(exc)}",
+        )
+
+    # Store the Supabase Storage path in PostgreSQL.
     meeting = Meeting(
         title=title,
-        audio_filename=filename,
+        audio_filename=storage_path,
         status="uploaded",
     )
 
-    db.add(meeting)
-    db.commit()
-    db.refresh(meeting)
+    try:
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+    except Exception:
+        # If the database fails after the Storage upload,
+        # remove the orphaned recording.
+        try:
+            delete_audio(storage_path)
+        except Exception:
+            pass
+
+        raise
 
     return meeting
 
@@ -123,11 +160,14 @@ def delete_meeting(
             detail="Meeting not found.",
         )
 
+    # Delete recording from Supabase Storage.
     if meeting.audio_filename:
-        file_path = UPLOAD_DIR / meeting.audio_filename
-
-        if file_path.exists():
-            file_path.unlink()
+        try:
+            delete_audio(meeting.audio_filename)
+        except Exception as exc:
+            print(
+                f"Warning: failed to delete audio from Supabase: {exc}"
+            )
 
     db.delete(meeting)
     db.commit()
@@ -157,21 +197,22 @@ def play_audio(
     if not meeting.audio_filename:
         raise HTTPException(
             status_code=404,
-            detail="No audio recording found for this meeting.",
+            detail="No audio recording found.",
         )
 
-    audio_path = Path("uploads") / meeting.audio_filename
+    try:
+        signed_url = create_audio_signed_url(
+            meeting.audio_filename
+        )
 
-    if not audio_path.exists():
+    except Exception as exc:
         raise HTTPException(
             status_code=404,
-            detail="Audio file not found.",
+            detail=f"Unable to access audio recording: {str(exc)}",
         )
 
-    return FileResponse(
-        path=audio_path,
-        media_type="audio/mpeg",
-        filename=meeting.audio_filename,
+    return RedirectResponse(
+        url=signed_url
     )
 
 
@@ -198,24 +239,43 @@ def process_meeting(
             detail="Meeting has no audio file.",
         )
 
-    audio_path = Path("uploads") / meeting.audio_filename
-
-    if not audio_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Audio file not found.",
-        )
+    temporary_file_path = None
 
     try:
         meeting.status = "processing"
         db.commit()
 
+        # Download the recording from Supabase.
+        audio_data = download_audio(
+            meeting.audio_filename
+        )
+
+        if not audio_data:
+            raise RuntimeError(
+                "Downloaded audio file is empty."
+            )
+
+        # Keep the file temporarily on the Render server
+        # while the transcription service processes it.
+        extension = Path(
+            meeting.audio_filename
+        ).suffix
+
+        with NamedTemporaryFile(
+            delete=False,
+            suffix=extension,
+        ) as temporary_file:
+            temporary_file.write(audio_data)
+            temporary_file_path = temporary_file.name
+
+        # Transcribe the recording.
         transcript = transcribe_audio(
-            str(audio_path)
+            temporary_file_path
         )
 
         meeting.transcript = transcript
 
+        # Generate meeting minutes.
         minutes = generate_minutes(
             meeting.title,
             transcript,
@@ -223,6 +283,7 @@ def process_meeting(
 
         meeting.minutes = minutes
 
+        # Generate downloadable documents.
         generate_docx(
             meeting.id,
             meeting.title,
@@ -250,8 +311,16 @@ def process_meeting(
 
         raise HTTPException(
             status_code=500,
-            detail=str(exc),
+            detail=f"Processing failed: {str(exc)}",
         )
+
+    finally:
+        # Remove the temporary recording after processing.
+        if temporary_file_path:
+            try:
+                os.remove(temporary_file_path)
+            except OSError:
+                pass
 
 
 @router.get("/{meeting_id}/document/pdf")

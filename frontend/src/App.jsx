@@ -72,7 +72,7 @@ function AppLayout() {
           />
 
           <Route
-            path="/meeting/:id"
+            path="/meetings/:id"
             element={<MeetingDetails />}
           />
 

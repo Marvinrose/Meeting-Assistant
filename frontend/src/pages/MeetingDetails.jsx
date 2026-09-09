@@ -228,7 +228,7 @@ function handleDownloadDocx() {
       >
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/meetings')}
           sx={{
             mb: 3,
             textTransform: 'none',
@@ -276,7 +276,7 @@ function handleDownloadDocx() {
       {/* Back */}
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/meetings')}
         sx={{
           mb: 3,
           textTransform: 'none',

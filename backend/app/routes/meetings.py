@@ -10,7 +10,7 @@ from fastapi import (
     HTTPException,
     UploadFile,
 )
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -284,18 +284,12 @@ def process_meeting(
         meeting.minutes = minutes
 
         # Generate downloadable documents.
-        generate_docx(
-            meeting.id,
+        minutes = generate_minutes(
             meeting.title,
-            minutes,
+            transcript,
         )
 
-        generate_pdf(
-            meeting.id,
-            meeting.title,
-            minutes,
-        )
-
+        meeting.minutes = minutes
         meeting.status = "completed"
 
         db.commit()
@@ -340,24 +334,40 @@ def download_pdf(
             detail="Meeting not found.",
         )
 
-    path = Path(
-        f"generated/meeting-{meeting_id}.pdf"
-    )
-
-    if not path.exists():
+    if not meeting.minutes:
         raise HTTPException(
-            status_code=404,
-            detail="PDF has not been generated yet.",
+            status_code=400,
+            detail="Meeting minutes have not been generated yet.",
         )
 
-    return FileResponse(
-        path,
+    try:
+        pdf_bytes = generate_pdf(
+            meeting.id,
+            meeting.title,
+            meeting.minutes,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate PDF: {str(exc)}",
+        )
+
+    return Response(
+        content=pdf_bytes,
         media_type="application/pdf",
-        filename=f"{meeting.title}.pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{meeting.title}.pdf"'
+            )
+        },
     )
 
+
 @router.get("/{meeting_id}/document/docx")
-def download_docx(meeting_id: int, db: Session = Depends(get_db)):
+def download_docx(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+):
     meeting = (
         db.query(Meeting)
         .filter(Meeting.id == meeting_id)
@@ -370,21 +380,33 @@ def download_docx(meeting_id: int, db: Session = Depends(get_db)):
             detail="Meeting not found.",
         )
 
-    path = Path(
-        f"generated/meeting-{meeting_id}.docx"
-    )
-
-    if not path.exists():
+    if not meeting.minutes:
         raise HTTPException(
-            status_code=404,
-            detail="DOCX has not been generated yet.",
+            status_code=400,
+            detail="Meeting minutes have not been generated yet.",
         )
 
-    return FileResponse(
-        path,
+    try:
+        docx_bytes = generate_docx(
+            meeting.id,
+            meeting.title,
+            meeting.minutes,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate DOCX: {str(exc)}",
+        )
+
+    return Response(
+        content=docx_bytes,
         media_type=(
             "application/vnd.openxmlformats-officedocument."
             "wordprocessingml.document"
         ),
-        filename=f"{meeting.title}.docx",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{meeting.title}.docx"'
+            )
+        },
     )

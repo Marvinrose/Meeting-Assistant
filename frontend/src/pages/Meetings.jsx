@@ -259,7 +259,7 @@ function Meetings() {
                 }
                 onClick={() =>
                   navigate(
-                    `/meeting/${meeting.id}`
+                    `/meetings/${meeting.id}`
                   )
                 }
               />

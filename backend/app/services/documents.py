@@ -1,4 +1,5 @@
-from pathlib import Path
+from io import BytesIO
+from html import escape
 
 from docx import Document
 from reportlab.lib.pagesizes import A4
@@ -10,17 +11,14 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet
 
 
-GENERATED_DIR = Path("generated")
-GENERATED_DIR.mkdir(exist_ok=True)
-
-
 def generate_docx(
     meeting_id: int,
     title: str,
     minutes: str,
-) -> str:
-
-    path = GENERATED_DIR / f"meeting-{meeting_id}.docx"
+) -> bytes:
+    """
+    Generate a DOCX document in memory and return it as bytes.
+    """
 
     document = Document()
 
@@ -30,41 +28,55 @@ def generate_docx(
     for paragraph in minutes.split("\n\n"):
         document.add_paragraph(paragraph)
 
-    document.save(path)
+    output = BytesIO()
+    document.save(output)
 
-    return str(path)
+    return output.getvalue()
 
 
 def generate_pdf(
     meeting_id: int,
     title: str,
     minutes: str,
-) -> str:
+) -> bytes:
+    """
+    Generate a PDF document in memory and return it as bytes.
+    """
 
-    path = GENERATED_DIR / f"meeting-{meeting_id}.pdf"
+    output = BytesIO()
 
     document = SimpleDocTemplate(
-        str(path),
+        output,
         pagesize=A4,
     )
 
     styles = getSampleStyleSheet()
 
     story = [
-        Paragraph(title, styles["Title"]),
+        Paragraph(
+            escape(title), 
+            styles["Title"],
+        ),
         Spacer(1, 20),
     ]
 
     for paragraph in minutes.split("\n\n"):
+        safe_paragraph = escape(paragraph).replace(
+            "\n",
+            "<br/>",
+        )
+
         story.append(
             Paragraph(
-                paragraph.replace("\n", "<br/>"),
+                safe_paragraph,
                 styles["BodyText"],
             )
         )
 
-        story.append(Spacer(1, 10))
+        story.append(
+            Spacer(1, 10)
+        )
 
     document.build(story)
 
-    return str(path)
+    return output.getvalue() 
